@@ -44,6 +44,9 @@ const addOrderItems = async (req, res) => {
 
     const createdOrder = await order.save();
 
+    // Populate product name/imageUrl so the confirmation email can display them
+    await createdOrder.populate("items.productId", "name imageUrl");
+
     for (const item of items) {
       const qty = item.qty || item.quantity || 1;
       await Product.findByIdAndUpdate(item.productId, {
@@ -58,16 +61,27 @@ const addOrderItems = async (req, res) => {
     }, 0);
     const savedAmount = originalTotal - totalAmount;
 
+    // Build flat item objects (name/imageUrl come from the populated productId)
+    // so the email template's item.name / item.imageUrl aren't undefined.
+    const emailItems = createdOrder.items.map((item) => ({
+      name: item.productId?.name || "Item",
+      imageUrl: item.productId?.imageUrl,
+      qty: item.qty,
+      price: item.price,
+    }));
+
+    const confirmationEmail = orderConfirmationEmail({
+      userName: req.user.name,
+      order: { ...createdOrder.toObject(), items: emailItems },
+      address,
+      totalAmount,
+      savedAmount,
+    });
+
     await sendEmail({
       email: req.user.email,
-      subject: `${process.env.ORGANIZATION_NAME}! - Order Confirmation`,
-      message: orderConfirmationEmail({
-        userName: req.user.name,
-        order: createdOrder,
-        address,
-        totalAmount,
-        savedAmount,
-      }),
+      subject: confirmationEmail.subject,
+      message: confirmationEmail.html,
     });
 
     res.status(201).json(createdOrder);
@@ -156,7 +170,15 @@ const updateOrderStatus = async (req, res) => {
     const previousStatus = order.status;
 
     if (isAdmin) {
-      order.status = req.body.status || order.status;
+      const newStatus = req.body.status || order.status;
+      if (newStatus === "Cancelled" && previousStatus !== "Cancelled") {
+        for (const item of order.items) {
+          await Product.findByIdAndUpdate(item.productId, {
+            $inc: { stock: item.qty },
+          });
+        }
+      }
+      order.status = newStatus;
     } else {
       if (req.body.status !== "Cancelled") {
         return res
