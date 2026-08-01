@@ -46,7 +46,7 @@ const ForYou = () => {
       <div style={styles.header}>
         <h2 style={styles.title}>✨ For You</h2>
         <p style={styles.subtitle}>
-          Personalized picks based on your shopping history
+          Personalized picks based on your preferences
         </p>
       </div>
 
