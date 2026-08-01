@@ -30,7 +30,7 @@ Inside the `backend/` folder, ensure your `.env` looks like this:
 ```env
 PORT=5000
 NODE_ENV=development
-MONGO_URI=mongodb://127.0.0.1:27017/NovaShop
+MONGO_URI=example Uri
 JWT_SECRET=super_secret_key
 RAZORPAY_KEY_ID=your_key_id
 RAZORPAY_KEY_SECRET=your_key_secret
