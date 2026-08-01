@@ -150,13 +150,15 @@ const getAnalytics = async (req, res) => {
       orders: bucket.orders,
     }));
 
-    // ── top categories — items actually sold within the range ─
-    //    (falls back to catalog-wide counts if no orders have
+    // ── top categories — items from DELIVERED orders only, within range ─
+    //    (falls back to catalog-wide counts if no delivered orders have
     //    line items yet, so the chart isn't empty on a fresh store)
     let topCategories = [];
     try {
       const soldAgg = await Order.aggregate([
-        { $match: dateMatch },
+        // ✅ FIX: only count units that were actually delivered,
+        // not every order placed in the range (Pending/Cancelled excluded)
+        { $match: { ...dateMatch, status: "Delivered" } },
         { $unwind: "$items" },
         {
           $addFields: {
@@ -195,7 +197,7 @@ const getAnalytics = async (req, res) => {
     }
 
     if (topCategories.length === 0) {
-      // fallback: static catalog breakdown (e.g. no sales in range yet)
+      // fallback: static catalog breakdown (e.g. no delivered sales in range yet)
       const catAgg = await Product.aggregate([
         { $group: { _id: "$category", count: { $sum: 1 } } },
         { $sort: { count: -1 } },

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { CheckCircle, Mail, ShieldCheck, ShoppingBag, Copy, Check, MapPin, Bell } from 'lucide-react';
+import { CheckCircle, ShieldCheck, ShoppingBag, Copy, Check, MapPin, Bell } from 'lucide-react';
 
 const OrderSuccess = () => {
   const location = useLocation();
@@ -10,6 +10,9 @@ const OrderSuccess = () => {
   const items = Array.isArray(orderData.items) ? orderData.items : [];
   const paymentMethod = orderData.paymentMethod || 'razorpay';
   const isCOD = paymentMethod === 'cod';
+
+  const itemsSubtotal = items.reduce((sum, item) => sum + (item.price || 0) * (item.qty || 0), 0);
+  const vatAmount = orderData.totalAmount ? orderData.totalAmount - itemsSubtotal : 0;
 
   const [show, setShow] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -99,6 +102,11 @@ const OrderSuccess = () => {
     value: {
       color: '#fff',
       fontWeight: 600,
+    },
+
+    divider: {
+      borderTop: '1px solid rgba(249,115,22,.2)',
+      margin: '10px 0',
     },
 
     copyBtn: {
@@ -257,6 +265,18 @@ const OrderSuccess = () => {
             <span style={{ ...s.value, color: '#22c55e' }}>
               {isCOD ? 'Cash on Delivery' : 'Paid Online'}
             </span>
+          </div>
+
+          <div style={s.divider} />
+
+          <div style={s.row}>
+            <span style={s.label}>Subtotal</span>
+            <span style={s.value}>Rs {itemsSubtotal.toFixed(2)}</span>
+          </div>
+
+          <div style={s.row}>
+            <span style={s.label}>VAT (13%)</span>
+            <span style={s.value}>Rs {vatAmount.toFixed(2)}</span>
           </div>
 
           <div style={{ ...s.row, marginBottom: 0 }}>

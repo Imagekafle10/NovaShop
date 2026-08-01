@@ -133,7 +133,6 @@ const orderConfirmationEmail = ({
         </p>
       </div>
 
-      ${ctaButton("View Your Order", orderUrl)}
     </div>
   `;
   return {
