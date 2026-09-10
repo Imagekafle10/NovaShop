@@ -2,13 +2,28 @@ const Order = require("../models/Order");
 const Product = require("../models/Product");
 const User = require("../models/User");
 
+// ── Business timezone used for bucketing/labeling dates.
+//    Without this, MongoDB's $dateToString buckets in UTC while the
+//    JS Date logic below (startDate calc, label formatting) uses the
+//    server's local timezone — causing days/hours to be split or
+//    mislabeled whenever the server isn't running in UTC.
+const TZ = "Asia/Kathmandu";
+
 // ── Revenue filter:
 //    Online payments  → count always (payment already collected)
 //    COD              → count ONLY when Delivered
+//
+// ✅ FIX: the old { paymentId: { $not: /^COD_/ } } silently matched
+// orders where paymentId is missing/null entirely (regex doesn't match
+// undefined, so $not flipped it to "matches"), inflating revenue with
+// orders that were never actually paid for online. We now require
+// paymentId to exist and be a non-COD string.
 const REVENUE_FILTER = {
   $or: [
-    // Online payment — any status
-    { paymentId: { $not: /^COD_/ } },
+    // Online payment — must actually have a paymentId, and it must not be COD
+    {
+      paymentId: { $exists: true, $ne: null, $not: /^COD_/ },
+    },
     // COD — only when delivered
     { paymentId: /^COD_/, status: "Delivered" },
   ],
@@ -64,21 +79,39 @@ const getRangeConfig = (range) => {
 };
 
 // ── Turns a raw bucket key (e.g. "2026-07-31 14:00") into a
-//    short display label appropriate for its granularity ────
+//    short display label appropriate for its granularity.
+//    ✅ FIX: bucketKey is produced by Mongo using the TZ timezone
+//    (see $dateToString calls below), so we parse/format it as that
+//    same timezone here — not as an ambiguous local-time string — or
+//    the displayed label drifts by the UTC offset.
 const formatLabel = (bucketKey, granularity) => {
   if (granularity === "hour") {
-    const d = new Date(bucketKey.replace(" ", "T") + ":00");
-    return d.toLocaleTimeString(undefined, { hour: "numeric" });
+    // bucketKey is "YYYY-MM-DD HH:00" already expressed in TZ.
+    // Format the hour portion directly — no re-parsing/timezone
+    // conversion needed since Mongo already gave us the TZ-local hour.
+    const [, timePart] = bucketKey.split(" ");
+    const [hourStr] = timePart.split(":");
+    const hour = Number(hourStr);
+    const period = hour >= 12 ? "PM" : "AM";
+    const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+    return `${displayHour} ${period}`;
   }
   if (granularity === "day") {
-    const d = new Date(bucketKey + "T00:00:00");
-    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    const [year, month, day] = bucketKey.split("-").map(Number);
+    const d = new Date(Date.UTC(year, month - 1, day));
+    return d.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC",
+    });
   }
   // month → "2026-07" => "Jul '26"
   const [year, month] = bucketKey.split("-");
-  const d = new Date(Number(year), Number(month) - 1, 1);
+  const d = new Date(Date.UTC(Number(year), Number(month) - 1, 1));
   return (
-    d.toLocaleDateString(undefined, { month: "short" }) + " '" + year.slice(2)
+    d.toLocaleDateString(undefined, { month: "short", timeZone: "UTC" }) +
+    " '" +
+    year.slice(2)
   );
 };
 
@@ -88,9 +121,14 @@ const getAdminStats = async (req, res) => {
     const totalProducts = await Product.countDocuments({});
     const totalUsers = await User.countDocuments({ role: "user" });
 
-    // ✅ FIX: Only sum COD orders that are Delivered
-    const orders = await Order.find(REVENUE_FILTER);
-    const totalRevenue = orders.reduce((acc, o) => acc + o.totalAmount, 0);
+    // ✅ FIX: sum revenue in the aggregation pipeline instead of pulling
+    // every matching order into memory with .find() and reducing in JS —
+    // same REVENUE_FILTER, but scales properly as order volume grows.
+    const revenueAgg = await Order.aggregate([
+      { $match: REVENUE_FILTER },
+      { $group: { _id: null, total: { $sum: "$totalAmount" } } },
+    ]);
+    const totalRevenue = revenueAgg[0]?.total ?? 0;
 
     res.json({ totalOrders, totalProducts, totalUsers, totalRevenue });
   } catch (error) {
@@ -105,7 +143,8 @@ const getAnalytics = async (req, res) => {
     const totalProducts = await Product.countDocuments();
     const totalUsers = await User.countDocuments();
 
-    // ✅ FIX: Total revenue — exclude undelivered COD
+    // ✅ FIX: revenue filter no longer silently includes orders with
+    // a missing paymentId (see REVENUE_FILTER above)
     const revenueAgg = await Order.aggregate([
       { $match: REVENUE_FILTER },
       { $group: { _id: null, total: { $sum: "$totalAmount" } } },
@@ -119,24 +158,38 @@ const getAnalytics = async (req, res) => {
     const { startDate, granularity, dateFormat } = getRangeConfig(range);
     const dateMatch = startDate ? { createdAt: { $gte: startDate } } : {};
 
-    // ── orders by status — now scoped to the selected range ───
+    // ── orders by status — scoped to the selected range ───────
+    // ✅ FIX: null/undefined status values used to collapse into a
+    // literal "undefined" key and vanish from the frontend silently.
+    // Now they're bucketed under an explicit "unknown" key so they're
+    // visible instead of disappearing.
     const statusAgg = await Order.aggregate([
       { $match: dateMatch },
       { $group: { _id: "$status", count: { $sum: 1 } } },
     ]);
     const ordersByStatus = {};
     statusAgg.forEach((s) => {
-      ordersByStatus[s._id?.toLowerCase()] = s.count;
+      const key = s._id ? String(s._id).toLowerCase() : "unknown";
+      ordersByStatus[key] = (ordersByStatus[key] || 0) + s.count;
     });
 
     // ── revenue over time — range-based, adaptive granularity ─
+    // ✅ FIX: bucket in TZ explicitly instead of Mongo's default UTC,
+    // so buckets line up with the same calendar days/hours the user
+    // actually sees, and match formatLabel's assumptions above.
     const revenueMatchStage = { ...REVENUE_FILTER, ...dateMatch };
 
     const series = await Order.aggregate([
       { $match: revenueMatchStage },
       {
         $group: {
-          _id: { $dateToString: { format: dateFormat, date: "$createdAt" } },
+          _id: {
+            $dateToString: {
+              format: dateFormat,
+              date: "$createdAt",
+              timezone: TZ,
+            },
+          },
           revenue: { $sum: "$totalAmount" },
           orders: { $sum: 1 },
         },
@@ -150,27 +203,39 @@ const getAnalytics = async (req, res) => {
       orders: bucket.orders,
     }));
 
-    // ── top categories — items from DELIVERED orders only, within range ─
-    //    (falls back to catalog-wide counts if no delivered orders have
-    //    line items yet, so the chart isn't empty on a fresh store)
+    // ── top categories — units actually sold from DELIVERED orders,
+    //    within the selected range ONLY. No catalog fallback: if
+    //    nothing was delivered in this period, the chart should show
+    //    that honestly (empty), not silently swap in total catalog
+    //    counts that have nothing to do with the selected period.
     let topCategories = [];
+
     try {
       const soldAgg = await Order.aggregate([
-        // ✅ FIX: only count units that were actually delivered,
+        // Only count units that were actually delivered,
         // not every order placed in the range (Pending/Cancelled excluded)
         { $match: { ...dateMatch, status: "Delivered" } },
         { $unwind: "$items" },
         {
           $addFields: {
+            // ✅ FIX: $convert with onError/onNull instead of $cond +
+            // $toObjectId. The old $toObjectId threw for the ENTIRE
+            // aggregation the moment one legacy order had a non-ObjectId
+            // productId. $convert handles it per-document — bad rows
+            // become null and get dropped below, instead of torching
+            // every other valid order's data too.
             "items.productObjId": {
-              $cond: [
-                { $eq: [{ $type: "$items.productId" }, "objectId"] },
-                "$items.productId",
-                { $toObjectId: "$items.productId" },
-              ],
+              $convert: {
+                input: "$items.productId",
+                to: "objectId",
+                onError: null,
+                onNull: null,
+              },
             },
           },
         },
+        // Drop line items whose productId couldn't be converted
+        { $match: { "items.productObjId": { $ne: null } } },
         {
           $lookup: {
             from: "products",
@@ -183,28 +248,29 @@ const getAnalytics = async (req, res) => {
         {
           $group: {
             _id: "$product.category",
+            // NOTE: confirm this matches your actual order-item schema
+            // field name (some codebases use "quantity" instead of "qty").
+            // If it's wrong, this silently sums undefined as 0 instead
+            // of throwing, and every category comes back with count: 0.
             count: { $sum: "$items.qty" },
           },
         },
         { $sort: { count: -1 } },
         { $limit: 6 },
       ]);
+
       topCategories = soldAgg.map((c) => ({ name: c._id, count: c.count }));
     } catch (aggErr) {
-      // e.g. productId isn't a valid ObjectId string in some legacy orders —
-      // fall through to the catalog-wide fallback below
+      // ✅ FIX: log instead of swallowing, so this failure mode is
+      // actually visible in production instead of an invisible fallback.
+      console.error("topCategories sales aggregation failed:", aggErr);
       topCategories = [];
     }
 
-    if (topCategories.length === 0) {
-      // fallback: static catalog breakdown (e.g. no delivered sales in range yet)
-      const catAgg = await Product.aggregate([
-        { $group: { _id: "$category", count: { $sum: 1 } } },
-        { $sort: { count: -1 } },
-        { $limit: 6 },
-      ]);
-      topCategories = catAgg.map((c) => ({ name: c._id, count: c.count }));
-    }
+    // No fallback here on purpose — an empty topCategories array means
+    // "nothing delivered in this period," and the frontend should show
+    // that as an empty state (see AdminDashboard's "No revenue data for
+    // this period" pattern), not paper over it with unrelated catalog data.
 
     res.json({
       totalOrders,

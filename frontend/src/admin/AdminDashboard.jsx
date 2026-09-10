@@ -2,14 +2,35 @@ import React, { useEffect, useState, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import {
-  Chart as ChartJS, CategoryScale, LinearScale, BarElement,
-  PointElement, LineElement, LineController, ArcElement, Tooltip
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  BarController,      // ✅ FIX: was missing — required for ANY bar chart
+                       //    (both the revenue bars and the category bars).
+                       //    Without it Chart.js throws when constructing
+                       //    those charts instead of rendering them.
+  PointElement,
+  LineElement,
+  LineController,
+  ArcElement,
+  DoughnutController,  // ✅ FIX: was missing — required for the
+                       //    "Orders by status" Doughnut chart.
+  Tooltip,
 } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
 
 ChartJS.register(
-  CategoryScale, LinearScale, BarElement,
-  PointElement, LineElement,LineController, ArcElement, Tooltip
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  BarController,
+  PointElement,
+  LineElement,
+  LineController,
+  ArcElement,
+  DoughnutController,
+  Tooltip
 );
 
 const token = {
@@ -120,6 +141,10 @@ const AdminDashboard = () => {
 
   const rangeLabel = RANGE_OPTIONS.find(r => r.key === range)?.label ?? '6 Months';
 
+  // Backend no longer falls back to catalog counts, so this is always
+  // genuine units sold for the selected period (possibly zero/empty).
+  const categorySubtitle = `Units sold — ${rangeLabel}`;
+
 const controls = [
   { label: 'Add categories', path: '/admin/categories', isNew: true , primary: true },
   { label: 'Add product',       path: '/admin/add-product'},
@@ -135,21 +160,6 @@ const controls = [
       {/* ── header ── */}
       <div style={{ display: 'flex', alignItems: 'center',
         justifyContent: 'space-between', marginBottom: 6 }}>
-        {/* <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 8,
-            background: token.orange, display: 'flex',
-            alignItems: 'center', justifyContent: 'center' }}>
-            <img src="/ShopNestLogo.png" alt=""
-              style={{ width: 22, height: 22, objectFit: 'cover', borderRadius: 4 }} />
-          </div>
-          <span style={{ fontSize: 17, fontWeight: 500,
-            color: token.text, letterSpacing: '-0.2px' }}>ShopNest</span>
-        </div> */}
-        {/* <span style={{ fontSize: 17, padding: '3px 10px', borderRadius: 20,
-          background: 'rgba(249,115,22,0.12)', color: token.orange,
-          border: '0.5px solid rgba(249,115,22,0.3)', fontWeight: 500 }}>
-          Admin panel
-        </span> */}
       </div>
       <p style={{ fontSize: 17, color: token.muted, marginBottom: 24 }}>
         Welcome back,{' '}
@@ -403,31 +413,39 @@ const controls = [
               <div style={{ fontSize: 17, fontWeight: 500,
                 color: '#e0e0e0', marginBottom: 2 }}>Products by category</div>
               <div style={{ fontSize: 17, color: '#555', marginBottom: 14 }}>
-                Units sold — {rangeLabel}
+                {categorySubtitle}
               </div>
               <div style={{ height: 230 }}>
-                <Bar
-                  data={{
-                    labels: catLabels,
-                    datasets: [{
-                      data: catCounts,
-                      backgroundColor: catColors,
-                      borderRadius: 3,
-                    }],
-                  }}
-                  options={{
-                    ...chartDefaults,
-                    indexAxis: 'y',
-                    scales: {
-                      x: scaleStyle,
-                      y: {
-                        ...scaleStyle,
-                        grid: { display: false },
-                        ticks: { color: '#aaa', font: { size: 12 } },
+                {catLabels.length > 0 ? (
+                  <Bar
+                    data={{
+                      labels: catLabels,
+                      datasets: [{
+                        data: catCounts,
+                        backgroundColor: catColors,
+                        borderRadius: 3,
+                      }],
+                    }}
+                    options={{
+                      ...chartDefaults,
+                      indexAxis: 'y',
+                      scales: {
+                        x: scaleStyle,
+                        y: {
+                          ...scaleStyle,
+                          grid: { display: false },
+                          ticks: { color: '#aaa', font: { size: 12 } },
+                        },
                       },
-                    },
-                  }}
-                />
+                    }}
+                  />
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', height: '100%',
+                    color: token.muted, fontSize: 13 }}>
+                    No units delivered in this period.
+                  </div>
+                )}
               </div>
             </div>
           </div>
