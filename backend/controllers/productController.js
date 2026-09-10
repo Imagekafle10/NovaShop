@@ -131,12 +131,36 @@ const searchProductsHandler = async (req, res) => {
 
 // ✅ Related products: TF-IDF cosine similarity
 // GET /api/products/:id/related?limit=4
+// ✅ Related products: pure TF-IDF overlap scoring + rating + purchase popularity
+// GET /api/products/:id/related
 const getRelatedProducts = async (req, res) => {
   try {
     const { id } = req.params;
-
     const allProducts = await Product.find({ stock: { $gt: 0 } });
-    const related = findRelatedProducts(allProducts, id, allProducts.length);
+    // Compute purchase counts on the fly from order history — no schema change needed
+    const purchaseCounts = await Order.aggregate([
+      { $unwind: "$items" },
+      {
+        $group: {
+          _id: "$items.productId",
+          count: { $sum: "$items.qty" },
+        },
+      },
+    ]);
+    const purchaseCountMap = {};
+    purchaseCounts.forEach((p) => {
+      purchaseCountMap[p._id.toString()] = p.count;
+    });
+    // attach purchaseCount to each product before ranking
+    const productsWithCounts = allProducts.map((p) => ({
+      ...p.toObject(),
+      purchaseCount: purchaseCountMap[p._id.toString()] || 0,
+    }));
+    const related = findRelatedProducts(
+      productsWithCounts,
+      id,
+      productsWithCounts.length,
+    );
     res.json(related);
   } catch (error) {
     res.status(500).json({ message: error.message });
