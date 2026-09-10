@@ -38,36 +38,41 @@ const tfidfVector = (tf, idf) => {
   return vec;
 };
 
-const cosineSim = (vecA, vecB) => {
-  const allTerms = new Set([...Object.keys(vecA), ...Object.keys(vecB)]);
-  let dot = 0,
-    magA = 0,
-    magB = 0;
-  allTerms.forEach((term) => {
-    const a = vecA[term] || 0;
-    const b = vecB[term] || 0;
-    dot += a * b;
-    magA += a * a;
-    magB += b * b;
+// ✅ Pure TF-IDF overlap score: sum of shared-term TF-IDF weight products.
+// No cosine normalization (no dividing by vector magnitude) — just raw
+// dot-product-style overlap between the target and candidate's TF-IDF vectors.
+const tfidfOverlapScore = (vecA, vecB) => {
+  let score = 0;
+  Object.keys(vecA).forEach((term) => {
+    if (vecB[term]) {
+      score += vecA[term] * vecB[term];
+    }
   });
-  if (magA === 0 || magB === 0) return 0;
-  return dot / (Math.sqrt(magA) * Math.sqrt(magB));
+  return score;
 };
 
 /**
- * Find products most similar to a target using TF-IDF weighted cosine similarity.
+ * Find products most similar to a target using pure TF-IDF overlap scoring
+ * (no cosine similarity/normalization), blended with rating and popularity signals.
  *
  * Ranking priority:
- *   1. Same category  → cosine score gets a +0.5 boost (always ranks above different category)
- *   2. Different category → ranked purely by cosine score
+ *   1. Same category  → score gets a boost so same-category products rank first
+ *   2. Different category → ranked purely by TF-IDF overlap score
  *
- * Within each group, products are ranked by TF-IDF cosine similarity
- * across name + description + category text.
+ * Within each group, products are ranked by a blended score:
+ *   - Raw TF-IDF overlap across name + description + category text (primary signal)
+ *   - Rating boost: higher-rated products get a bonus (secondary signal)
+ *   - Popularity boost: more-purchased products get a bonus (secondary signal)
  *
- * @param {Array}  allProducts     - all product documents
+ * Since raw TF-IDF overlap scores are unbounded (unlike cosine similarity's 0–1 range),
+ * the score is normalized against the max overlap score in the candidate set before
+ * rating/popularity boosts are applied, so those boosts remain meaningfully proportioned.
+ *
+ * @param {Array}  allProducts     - all product documents (each optionally carrying
+ *                                   a `purchaseCount` field attached by the caller)
  * @param {string} targetProductId - _id of the product to find related items for
  * @param {number} limit           - max results (default 4)
- * @returns {Array} related products sorted by priority then similarity
+ * @returns {Array} related products sorted by priority then blended score
  */
 const findRelatedProducts = (allProducts, targetProductId, limit = 4) => {
   const targetIndex = allProducts.findIndex(
@@ -90,29 +95,52 @@ const findRelatedProducts = (allProducts, targetProductId, limit = 4) => {
 
   const targetVec = vectors[targetIndex];
 
+  // Raw overlap scores for every candidate against the target
+  const rawScores = allProducts.map((p, i) =>
+    tfidfOverlapScore(targetVec, vectors[i]),
+  );
+  const maxRawScore = Math.max(1, ...rawScores);
+
+  // Normalize purchaseCount across the candidate set for a proportioned boost
+  const maxPurchaseCount = Math.max(
+    1,
+    ...allProducts.map((p) => p.purchaseCount || 0),
+  );
+
   return allProducts
     .map((p, i) => {
-      const cosineSimilarity = cosineSim(targetVec, vectors[i]);
+      // Normalize raw TF-IDF overlap to a 0–1 range relative to this candidate set
+      const relevanceScore = rawScores[i] / maxRawScore;
 
-      // ✅ Category boost: same category gets +0.5 added to score
-      // This guarantees same-category products always outrank different-category ones
-      // since raw cosine similarity is always between 0 and 1
       const sameCategory =
         (p.category || "").toLowerCase().trim() === targetCat;
-      const finalScore = cosineSimilarity + (sameCategory ? 0.5 : 0);
 
-      return { product: p, score: finalScore, sameCategory, cosineSimilarity };
+      const ratingBoost = ((p.ratings || 0) / 5) * 0.15;
+      const popularityBoost =
+        ((p.purchaseCount || 0) / maxPurchaseCount) * 0.15;
+
+      const finalScore =
+        relevanceScore +
+        (sameCategory ? 0.5 : 0) +
+        ratingBoost +
+        popularityBoost;
+
+      return {
+        product: p,
+        score: finalScore,
+        sameCategory,
+        relevanceScore,
+        rawScore: rawScores[i],
+      };
     })
     .filter(
       (s) =>
         s.product._id.toString() !== targetProductId.toString() &&
-        s.cosineSimilarity > 0,
+        s.rawScore > 0,
     )
     .sort((a, b) => {
-      // Same category always before different category
       if (a.sameCategory !== b.sameCategory) return a.sameCategory ? -1 : 1;
-      // Within same group, sort by cosine similarity
-      return b.cosineSimilarity - a.cosineSimilarity;
+      return b.score - a.score;
     })
     .slice(0, limit)
     .map((s) => s.product);

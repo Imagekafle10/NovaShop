@@ -12,6 +12,7 @@ const OrderDetails = () => {
   const [order,   setOrder]   = useState(null);
   const [loading, setLoading] = useState(true);
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     if (!user) { navigate('/login'); return; }
@@ -222,6 +223,32 @@ const OrderDetails = () => {
     }
   };
 
+  // Regular users can only cancel a Pending order (matches backend rules in
+  // updateOrderStatus). Admins get the real delete flow below.
+  const handleCancelOrder = async () => {
+    if (!window.confirm('Are you sure you want to cancel this order?')) return;
+    setCancelling(true);
+    try {
+      const res = await fetch(`/api/orders/${order._id}/status`, {
+        method:  'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
+        body:    JSON.stringify({ status: 'Cancelled' })
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setOrder(prev => ({ ...prev, status: updated.status }));
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || 'Failed to cancel order');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Something went wrong while cancelling the order');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to delete this order?')) return;
     try {
@@ -302,10 +329,20 @@ const OrderDetails = () => {
             </Link>
           )}
           <div style={{ display: 'flex', gap: '10px' }}>
-            {(user.role === 'admin' || order.status === 'Pending') && (
+            {user.role === 'admin' ? (
               <button onClick={handleDelete} style={styles.deleteBtn}>
                 <Trash2 size={16} /> Delete
               </button>
+            ) : (
+              order.status === 'Pending' && (
+                <button
+                  onClick={handleCancelOrder}
+                  disabled={cancelling}
+                  style={{ ...styles.deleteBtn, opacity: cancelling ? 0.6 : 1, cursor: cancelling ? 'not-allowed' : 'pointer' }}
+                >
+                  {cancelling ? 'Cancelling...' : 'Cancel Order'}
+                </button>
+              )
             )}
             <button onClick={handleDownloadPDF} style={styles.downloadBtn}>
               <Download size={16} /> Download PDF
