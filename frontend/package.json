@@ -28,7 +28,7 @@
       "react-app"
     ]
   },
-  "proxy": "http://localhost:5000",
+  "proxy": "https://novashop-backend.vercel.app",
   "browserslist": {
     "production": [
       ">0.2%",
