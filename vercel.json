@@ -2,10 +2,7 @@
   "services": {
     "frontend": {
       "root": "frontend",
-      "framework": "create-react-app",
-      "env": {
-        "CI": "false"
-      }
+      "framework": "create-react-app"
     },
     "backend": {
       "root": "backend",
