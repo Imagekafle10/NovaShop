@@ -3,13 +3,13 @@ import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import {
   Chart as ChartJS, CategoryScale, LinearScale, BarElement,
-  PointElement, LineElement, ArcElement, Tooltip
+  PointElement, LineElement, LineController, ArcElement, Tooltip
 } from 'chart.js';
 import { Bar, Doughnut } from 'react-chartjs-2';
 
 ChartJS.register(
   CategoryScale, LinearScale, BarElement,
-  PointElement, LineElement, ArcElement, Tooltip
+  PointElement, LineElement,LineController, ArcElement, Tooltip
 );
 
 const token = {
