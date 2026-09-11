@@ -45,9 +45,9 @@ const ForYou = () => {
       {/* Header */}
       <div style={styles.header}>
         <h2 style={styles.title}>✨ For You</h2>
-        <p style={styles.subtitle}>
+        {/* <p style={styles.subtitle}>
           Personalized picks based on your preferences
-        </p>
+        </p> */}
       </div>
 
       {/* Content */}
@@ -61,11 +61,11 @@ const ForYou = () => {
           <Link to="/shop" className="btn">Browse Marketplace</Link>
         </div>
       ) : (
-        <div style={styles.grid}>
-          {recommendations.map((product) => (
-            <ProductCard key={product._id} product={product} />
-          ))}
-        </div>
+       <div className="product-grid product-grid-flat">
+  {recommendations.map((product) => (
+    <ProductCard key={product._id} product={product} />
+  ))}
+</div>
       )}
     </div>
   );
@@ -74,8 +74,8 @@ const ForYou = () => {
 const styles = {
   page: {
     maxWidth:  "1200px",
-    margin:    "40px auto",
-    padding:   "0 30px",
+    margin:    "0px auto",
+    // padding:   "0 30px",
     color:     "#fafafa",
   },
   header: {
@@ -107,12 +107,6 @@ const styles = {
     color:        "#a1a1aa",
     marginBottom: "20px",
     fontSize:     "1.1rem",
-  },
-  grid: {
-    display:             "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))",
-    gap:                 "30px",
-    marginTop:           "10px",
   },
 };
 
