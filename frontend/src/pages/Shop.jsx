@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
+import { Filter } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
 import '../styles/product.css';
 import { AuthContext } from '../context/AuthContext';
@@ -59,9 +60,7 @@ const ScrollToTopButton = () => {
     <button
       onClick={scrollToTop}
       aria-label="Scroll to top"
-      style={styles.scrollTopBtn}
-      onMouseEnter={(e) => { e.currentTarget.style.background = '#fb923c'; e.currentTarget.style.transform = 'translateY(-3px)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.background = '#f97316'; e.currentTarget.style.transform = 'translateY(0)'; }}
+      className="scroll-top-btn"
     >
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="18 15 12 9 6 15"></polyline>
@@ -88,6 +87,7 @@ const Shop = () => {
   const [maxPrice,       setMaxPrice]       = useState('');
   const [minRating,      setMinRating]      = useState(0);
   const [hydrated,       setHydrated]       = useState(false);
+  const [showFilters,    setShowFilters]    = useState(false);
 
   useEffect(() => {
     const saved = loadFilters(userId);
@@ -98,6 +98,7 @@ const Shop = () => {
       setMinPrice(saved.minPrice || '');
       setMaxPrice(saved.maxPrice || '');
       setMinRating(saved.minRating || 0);
+      setShowFilters(saved.showFilters || false);
     } else {
       setSearch('');
       setActiveCategory('All');
@@ -105,14 +106,15 @@ const Shop = () => {
       setMinPrice('');
       setMaxPrice('');
       setMinRating(0);
+      setShowFilters(false);
     }
     setHydrated(true);
   }, [userId]);
 
   useEffect(() => {
     if (!hydrated) return;
-    saveFilters(userId, { search, activeCategory, sort, minPrice, maxPrice, minRating });
-  }, [hydrated, userId, search, activeCategory, sort, minPrice, maxPrice, minRating]);
+    saveFilters(userId, { search, activeCategory, sort, minPrice, maxPrice, minRating, showFilters });
+  }, [hydrated, userId, search, activeCategory, sort, minPrice, maxPrice, minRating, showFilters]);
 
   useEffect(() => {
     fetch('/api/products?latest=true')
@@ -187,13 +189,25 @@ const Shop = () => {
   return (
     <div className="shop-container">
 
-      <input
-        type="text"
-        placeholder="Search products..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="search-bar"
-      />
+      <div className="search-row">
+        <input
+          type="text"
+          placeholder="Search products..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="search-bar"
+        />
+
+        {user && (
+          <button
+            className="filter-icon-btn"
+            onClick={() => setShowFilters(v => !v)}
+            aria-label="Filters"
+          >
+            <Filter size={20} />
+          </button>
+        )}
+      </div>
 
       <div className="category-tabs">
         {categories.map((cat) => (
@@ -207,12 +221,12 @@ const Shop = () => {
         ))}
       </div>
 
-      {user && (
-        <div style={styles.filterBar}>
+      {user && showFilters && (
+        <div className="filter-bar">
           <select
             value={sort}
             onChange={e => setSort(e.target.value)}
-            style={styles.select}
+            className="filter-select"
           >
             {searchResults !== null && (
               <option value="relevance">Relevance</option>
@@ -222,45 +236,40 @@ const Shop = () => {
             ))}
           </select>
 
-          <div style={styles.filterGroup}>
-            <span style={styles.filterLabel}>Price</span>
+          <div className="filter-group">
+            <span className="filter-label">Price</span>
             <input
               type="text"
               placeholder="Min"
               value={minPrice}
               onChange={e => setMinPrice(e.target.value)}
-              style={styles.priceInput}
+              className="price-input"
             />
-            <span style={{ color: '#71717a' }}>—</span>
+            <span className="price-sep">—</span>
             <input
               type="text"
               placeholder="Max"
               value={maxPrice}
               onChange={e => setMaxPrice(e.target.value)}
-              style={styles.priceInput}
+              className="price-input"
             />
           </div>
 
-          <div style={styles.filterGroup}>
-            <span style={styles.filterLabel}>Min Rating</span>
+          <div className="filter-group">
+            <span className="filter-label">Min Rating</span>
             {[1, 2, 3, 4, 5].map(star => (
               <span
                 key={star}
                 onClick={() => setMinRating(minRating === star ? 0 : star)}
-                style={{
-                  fontSize:   20,
-                  cursor:     'pointer',
-                  color:      star <= minRating ? '#f97316' : '#3f3f46',
-                  transition: 'color 0.15s',
-                  userSelect: 'none',
-                }}
+                className="rating-star"
+                style={{ color: star <= minRating ? '#f97316' : '#3f3f46' }}
               >★</span>
             ))}
-            {minRating > 0 && <span style={{ color: '#71717a', fontSize: 12 }}>& up</span>}
+            {minRating > 0 && <span className="rating-suffix">& up</span>}
           </div>
 
           {hasFilters && (
-            <button onClick={clearFilters} style={styles.clearBtn}>
+            <button onClick={clearFilters} className="clear-filters-btn">
               Clear filters
             </button>
           )}
@@ -306,52 +315,6 @@ const Shop = () => {
       <ScrollToTopButton />
     </div>
   );
-};
-
-const styles = {
-  filterBar: {
-    display: 'flex', alignItems: 'center', flexWrap: 'wrap',
-    gap: 30, padding: '12px 40px',
-    background: '#2b2b2e', border: '1px solid #27272a',
-    borderRadius: 12, marginBottom: 24,
-  },
-  select: {
-    background: '#09090b', border: '1px solid #27272a',
-    borderRadius: 8, color: '#fff',
-    padding: '8px 20px', fontSize: 13,
-    outline: 'none', cursor: 'pointer',
-  },
-  filterGroup: { display: 'flex', alignItems: 'center', gap: 6 },
-  filterLabel: { color: '#fff', fontSize: 12, fontWeight: 500, marginRight: 2 },
-  priceInput: {
-    width: 120, background: '#09090b',
-    border: '1px solid #27272a', borderRadius: 8,
-    color: '#fff', padding: '7px 12px',
-    fontSize: 13, outline: 'none',
-  },
-  clearBtn: {
-    background: 'red', border: '1px solid #3f3f46',
-    borderRadius: 8, color: 'white',
-    padding: '7px 14px', fontSize: 12,
-    cursor: 'pointer', marginLeft: 'auto',
-  },
-  scrollTopBtn: {
-    position: 'fixed',
-    bottom: 32,
-    right: 32,
-    width: 46,
-    height: 46,
-    borderRadius: '50%',
-    background: '#f97316',
-    border: 'none',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
-    transition: 'background 0.2s, transform 0.2s',
-    zIndex: 999,
-  },
 };
 
 export default Shop;
