@@ -8,6 +8,8 @@ backend/node_modules/
 frontend/.env
 backend/.env
 
+# Seed
+seed.js
     
 
 # Frontend build output
