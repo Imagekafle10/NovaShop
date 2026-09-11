@@ -192,7 +192,6 @@ const s = {
   page: {
     minHeight:  '100vh',
     background: 'linear-gradient(180deg, #0b0b0e 0%, #18181b 100%)',
-    padding:    '40px 16px',
   },
   container: {
     maxWidth: '780px',
@@ -265,7 +264,7 @@ const s = {
     background:   '#18181b',
     border:       '1px solid #27272a',
     borderRadius: '16px',
-    padding:      '28px',
+    padding:      '10px',
   },
   sectionTitle: {
     color:        '#f97316',

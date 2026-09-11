@@ -150,9 +150,140 @@ const ProductDetail = () => {
   };
 
   return (
-    <div className="product-detail-wrapper" style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
+    <div className="product-detail-wrapper pd-container">
 
-      <div style={{ color: '#a1a1aa', marginBottom: '20px', fontSize: '0.95rem' }}>
+      {/* ✅ FIX: scoped responsive rules for pieces that previously used
+          fixed inline sizes (font sizes, button layout, etc.) and
+          didn't scale down for small screens. .product-detail's own
+          1-column collapse at 900px (in product.css) already handled
+          the big layout switch — this fills in the rest. */}
+      <style>{`
+        .pd-container {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 20px;
+        }
+        @media (max-width: 480px) {
+          .pd-container { padding: 12px; }
+        }
+
+        .pd-breadcrumb {
+          color: #a1a1aa;
+          margin-bottom: 20px;
+          font-size: 0.95rem;
+          word-break: break-word;
+        }
+
+        .pd-title {
+          font-size: 2.8rem;
+          margin-bottom: 10px;
+        }
+        @media (max-width: 600px) {
+          .pd-title { font-size: 1.9rem; }
+        }
+
+        .pd-price {
+          font-size: 2.5rem;
+          margin: 0;
+        }
+        @media (max-width: 600px) {
+          .pd-price { font-size: 1.9rem; }
+        }
+
+        .pd-actions {
+          display: flex;
+          gap: 12px;
+        }
+        @media (max-width: 480px) {
+          .pd-actions { flex-direction: column; }
+        }
+        .pd-actions .btn {
+          flex: 1;
+          padding: 18px;
+          font-size: 1.2rem;
+        }
+        @media (max-width: 480px) {
+          .pd-actions .btn { padding: 14px; font-size: 1.05rem; }
+        }
+
+        .pd-review-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 8px;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+
+        .pd-section-box {
+          background: #18181b;
+          border: 1px solid #27272a;
+          border-radius: 14px;
+          padding: 24px;
+        }
+        @media (max-width: 480px) {
+          .pd-section-box { padding: 14px; border-radius: 10px; }
+        }
+
+        .pd-heading {
+          color: #fff;
+          margin-bottom: 16px;
+          font-size: 1.2rem;
+        }
+        @media (max-width: 480px) {
+          .pd-heading { font-size: 1rem; margin-bottom: 10px; }
+        }
+
+        .pd-star-input {
+          font-size: 32px;
+          cursor: pointer;
+          user-select: none;
+          transition: color 0.15s;
+        }
+        @media (max-width: 480px) {
+          .pd-star-input { font-size: 22px; }
+        }
+
+        .pd-textarea {
+          width: 100%;
+          padding: 12px 14px;
+          background: #09090b;
+          border: 1px solid #27272a;
+          border-radius: 8px;
+          color: #fff;
+          font-size: 14px;
+          outline: none;
+          resize: vertical;
+          font-family: inherit;
+          box-sizing: border-box;
+        }
+        @media (max-width: 480px) {
+          .pd-textarea { padding: 9px 11px; font-size: 13px; }
+        }
+
+        .pd-review-card {
+          background: #18181b;
+          border: 1px solid #27272a;
+          border-radius: 12px;
+          padding: 18px;
+        }
+        @media (max-width: 480px) {
+          .pd-review-card { padding: 12px; border-radius: 8px; }
+        }
+        .pd-detail-image {
+          width: 100%;
+          border-radius: 12px;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+          object-fit: cover;
+        }
+        @media (max-width: 600px) {
+          .pd-detail-image {
+            height: 260px;
+          }
+        }
+      `}</style>
+
+      <div className="pd-breadcrumb">
         <Link to="/" style={{ color: '#f97316' }}>Home</Link> /&nbsp;
         <Link to="/shop" style={{ color: '#f97316' }}>Shop</Link> /&nbsp;
         {product.category} / <span style={{ color: '#fff' }}>{product.name}</span>
@@ -161,20 +292,20 @@ const ProductDetail = () => {
       <div className="product-detail">
 
         <div className="detail-image-container">
-          <img src={product.imageUrl} alt={product.name} className="detail-image" />
+          <img src={product.imageUrl} alt={product.name} className="detail-image pd-detail-image" />
         </div>
 
         <div className="detail-info">
-          <h2 style={{ fontSize: '2.8rem', marginBottom: '10px' }}>{product.name}</h2>
+          <h2 className="pd-title">{product.name}</h2>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
             <Stars rating={product.ratings} size={20} />
             <span style={{ color: '#f97316', fontWeight: 700 }}>{Number(product.ratings).toFixed(1)}</span>
             <span style={{ color: '#71717a', fontSize: 13 }}>({product.numReviews} review{product.numReviews !== 1 ? 's' : ''})</span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '15px 0' }}>
-            <p className="detail-price" style={{ fontSize: '2.5rem', margin: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '15px 0', flexWrap: 'wrap' }}>
+            <p className="detail-price pd-price">
               Rs {finalPrice}
             </p>
             {hasDiscount && (
@@ -202,13 +333,12 @@ const ProductDetail = () => {
           </div>
 
      {user?.role !== 'admin' && (
-  <div style={{ display: 'flex', gap: 12 }}>
+  <div className="pd-actions">
     <button
       onClick={handleAddToCart}
       disabled={addingToCart}
       className="btn"
       style={{
-        flex: 1, padding: '18px', fontSize: '1.2rem',
         opacity: addingToCart ? 0.7 : 1,
         background: 'transparent',
         border: '2px solid #f97316',
@@ -223,7 +353,6 @@ const ProductDetail = () => {
       disabled={buyingNow || product.stock <= 0}
       className="btn"
       style={{
-        flex: 1, padding: '18px', fontSize: '1.2rem',
         opacity: (buyingNow || product.stock <= 0) ? 0.7 : 1,
       }}
     >
@@ -241,8 +370,8 @@ const ProductDetail = () => {
       <div style={{ marginTop: 48 }}>
 
         {user && user.role !== 'admin' && (
-          <div style={{ background: '#18181b', border: '1px solid #27272a', borderRadius: 14, padding: 24, marginBottom: 28 }}>
-            <h3 style={{ color: '#fff', marginBottom: 16, fontSize: '1.2rem' }}>Write a Review</h3>
+          <div className="pd-section-box" style={{ marginBottom: 28 }}>
+            <h3 className="pd-heading">Write a Review</h3>
 
             {reviewErr && (
               <p style={{ color: '#ef4444', marginBottom: 12, fontSize: 14 }}>{reviewErr}</p>
@@ -258,12 +387,9 @@ const ProductDetail = () => {
                       onClick={() => setRating(star)}
                       onMouseEnter={() => setHover(star)}
                       onMouseLeave={() => setHover(0)}
+                      className="pd-star-input"
                       style={{
-                        fontSize:   32,
-                        cursor:     'pointer',
-                        color:      star <= (hover || rating) ? '#f97316' : '#3f3f46',
-                        transition: 'color 0.15s',
-                        userSelect: 'none',
+                        color: star <= (hover || rating) ? '#f97316' : '#3f3f46',
                       }}
                     >
                       ★
@@ -280,19 +406,7 @@ const ProductDetail = () => {
                   rows={3}
                   value={comment}
                   onChange={e => setComment(e.target.value)}
-                  style={{
-                    width:        '100%',
-                    padding:      '12px 14px',
-                    background:   '#09090b',
-                    border:       '1px solid #27272a',
-                    borderRadius: 8,
-                    color:        '#fff',
-                    fontSize:     14,
-                    outline:      'none',
-                    resize:       'vertical',
-                    fontFamily:   'inherit',
-                    boxSizing:    'border-box',
-                  }}
+                  className="pd-textarea"
                 />
               </div>
 
@@ -324,19 +438,19 @@ const ProductDetail = () => {
           </p>
         )}
 
-        <h3 style={{ color: '#fff', marginBottom: 16, fontSize: '1.2rem' }}>
+        <h3 className="pd-heading">
           Reviews ({reviews.length})
         </h3>
 
         {reviews.length === 0 ? (
-          <div style={{ background: '#18181b', border: '1px solid #27272a', borderRadius: 12, padding: 24, textAlign: 'center' }}>
+          <div className="pd-section-box" style={{ textAlign: 'center' }}>
             <p style={{ color: '#a1a1aa' }}>No reviews yet. Be the first to review this product!</p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {reviews.map(r => (
-              <div key={r._id} style={{ background: '#18181b', border: '1px solid #27272a', borderRadius: 12, padding: 18 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <div key={r._id} className="pd-review-card">
+                <div className="pd-review-header">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{
                       width:           36,

@@ -200,7 +200,7 @@ const Shop = () => {
 
         {user && (
           <button
-            className="filter-icon-btn"
+            className={`filter-icon-btn ${showFilters ? 'active' : ''}`}
             onClick={() => setShowFilters(v => !v)}
             aria-label="Filters"
           >
@@ -312,7 +312,6 @@ const Shop = () => {
         )}
       </section>
 
-      <ScrollToTopButton />
     </div>
   );
 };
