@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import ProductCard from './ProductCard';
+import '../styles/product.css';
 
 const RelatedProducts = ({ productId }) => {
   const [related, setRelated] = useState([]);
@@ -33,33 +34,19 @@ const RelatedProducts = ({ productId }) => {
   const hasMore = related.length > 8;
 
   return (
-    <div style={styles.section}>
-      <style>{`
-        .related-products-grid {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 14px;
-        }
-        @media (max-width: 900px) {
-          .related-products-grid {
-            grid-template-columns: repeat(3, 1fr);
-          }
-        }
-        @media (max-width: 640px) {
-          .related-products-grid {
-            grid-template-columns: repeat(2, 1fr);
-          }
-        }
-        @media (max-width: 400px) {
-          .related-products-grid {
-            grid-template-columns: repeat(1, 1fr);
-             
-          }
-        }
-      `}</style>
-
+    // ✅ FIX: dropped the boxed panel (dark background + border) — Shop's
+    // "All Products" / category sections are plain, just a heading over
+    // the grid, no card-style container around the whole section.
+    <section style={styles.section}>
+      {/* ✅ FIX: reuse Shop's exact h3 styling (margin: 0, same size/weight)
+          instead of this component's own title style, so headings look
+          identical across pages. */}
       <h3 style={styles.title}>You may also like</h3>
-      <div className="related-products-grid">
+
+      {/* ✅ FIX: shared .product-grid class from product.css — same
+          minmax(280px, 1fr) auto-fill columns and 30px gap Shop uses,
+          instead of this component's own 4/3/2/1 breakpoint grid. */}
+      <div className="product-grid">
         {visible.map((product) => (
           <ProductCard key={product._id} product={product} />
         ))}
@@ -72,23 +59,20 @@ const RelatedProducts = ({ productId }) => {
           </button>
         </div>
       )}
-    </div>
+    </section>
   );
 };
 
 const styles = {
   section: {
-    background:   '#18181b',
-    border:       '1px solid #27272a',
-    borderRadius: '14px',
-    // padding:      '5px',
     marginBottom: '20px',
   },
   title: {
+    margin:       0,
+    marginBottom: '12px',
     color:        '#fff',
-    fontSize:     '1.05rem',
-    fontWeight:   'bold',
-    marginBottom: '16px',
+    fontSize:     '20px',
+    fontWeight:   600,
   },
   moreWrap: {
     display:        'flex',

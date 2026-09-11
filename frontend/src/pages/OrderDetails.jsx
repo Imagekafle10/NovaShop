@@ -541,7 +541,7 @@ const OrderDetails = () => {
 };
 
 const styles = {
-  page:        { minHeight: '100vh', background: 'linear-gradient(180deg, #0b0b0e 0%, #18181b 100%)', padding: '40px 16px' },
+  page:        { minHeight: '100vh', background: 'linear-gradient(180deg, #0b0b0e 0%, #18181b 100%)'},
   container:   { maxWidth: '780px', margin: '0 auto', color: '#fafafa' },
   topBar:      { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' },
   backLink:    { display: 'flex', alignItems: 'center', gap: '6px', color: '#a1a1aa', textDecoration: 'none', fontSize: '0.95rem', fontWeight: 500 },

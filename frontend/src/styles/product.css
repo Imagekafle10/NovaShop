@@ -38,6 +38,35 @@
   align-items: start;
 }
 
+/* ✅ NEW: .product-grid-flat is referenced by the mobile
+   :not(.product-grid-flat) selectors further down, but was never
+   actually given its own layout — so ForYou (which uses this class)
+   was just falling back to plain .product-grid's auto-fill behavior,
+   which only fit 3 columns into a typical laptop-width container
+   instead of a fixed 4. */
+.product-grid-flat {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  margin-top: 30px;
+}
+@media (max-width: 1100px) {
+  .product-grid-flat {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (max-width: 768px) {
+  .product-grid-flat {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 480px) {
+  .product-grid-flat {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+}
+
 .product-card {
   background: #18181b;
   border-radius: 12px;
@@ -159,7 +188,11 @@
 .filter-icon-btn:hover {
   border-color: #f97316;
 }
-
+.filter-icon-btn.active {
+  color: white;
+  background: #f97316;
+  border-color: #f97316;
+}
 /* Filter bar */
 .filter-bar {
   display: flex;
@@ -240,7 +273,7 @@
   grid-template-columns: 1fr 1fr;
   gap: 50px;
   background: #18181b;
-  padding: 40px;
+  padding: 10px;
   border-radius: 16px;
   border: 1px solid #27272a;
 }
