@@ -39,35 +39,35 @@ const saveFilters = (userId, filters) => {
 };
 
 // --- Scroll to top button ---
-const ScrollToTopButton = () => {
-  const [visible, setVisible] = useState(false);
+// const ScrollToTopButton = () => {
+//   const [visible, setVisible] = useState(false);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setVisible(window.scrollY > 300);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+//   useEffect(() => {
+//     const handleScroll = () => {
+//       setVisible(window.scrollY > 300);
+//     };
+//     window.addEventListener('scroll', handleScroll);
+//     return () => window.removeEventListener('scroll', handleScroll);
+//   }, []);
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+//   const scrollToTop = () => {
+//     window.scrollTo({ top: 0, behavior: 'smooth' });
+//   };
 
-  if (!visible) return null;
+//   if (!visible) return null;
 
-  return (
-    <button
-      onClick={scrollToTop}
-      aria-label="Scroll to top"
-      className="scroll-top-btn"
-    >
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="18 15 12 9 6 15"></polyline>
-      </svg>
-    </button>
-  );
-};
+//   return (
+//     <button
+//       onClick={scrollToTop}
+//       aria-label="Scroll to top"
+//       className="scroll-top-btn"
+//     >
+//       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+//         <polyline points="18 15 12 9 6 15"></polyline>
+//       </svg>
+//     </button>
+//   );
+// };
 
 const Shop = () => {
   const { user } = useContext(AuthContext);
