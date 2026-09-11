@@ -178,6 +178,13 @@ const updateOrderStatus = async (req, res) => {
           });
         }
       }
+      if (newStatus === "Delivered" && previousStatus !== "Delivered") {
+        for (const item of order.items) {
+          await Product.findByIdAndUpdate(item.productId, {
+            $inc: { sold: item.qty },
+          });
+        }
+      }
       order.status = newStatus;
     } else {
       if (req.body.status !== "Cancelled") {
