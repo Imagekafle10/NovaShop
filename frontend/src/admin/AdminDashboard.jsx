@@ -155,7 +155,32 @@ const controls = [
 
   return (
     <div style={{ background: token.bg, borderRadius: 16, padding: 28,
-      maxWidth: 1100, margin: '0 auto' }}>
+      maxWidth: 1100, margin: '0 auto' }} className="admin-dashboard">
+
+      {/* ✅ FIX: this page is built entirely with inline styles, which
+          can't respond to screen width on their own. The two real
+          breakpoints that mattered: the Orders-by-status /
+          Products-by-category row was a fixed 1fr/1fr grid that
+          squeezed two charts into a narrow phone screen, and the
+          range-selector button row (1 Day / 1 Month / ...) had no
+          wrap or scroll at all — it would simply overflow on mobile. */}
+      <style>{`
+        @media (max-width: 700px) {
+          .admin-dashboard { padding: 14px !important; }
+          .admin-charts-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+        .admin-range-selector {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+        }
+        .admin-range-selector::-webkit-scrollbar { display: none; }
+        .admin-range-selector button {
+          flex-shrink: 0;
+        }
+      `}</style>
 
       {/* ── header ── */}
       <div style={{ display: 'flex', alignItems: 'center',
@@ -264,8 +289,8 @@ const controls = [
               </div>
 
               {/* range selector */}
-              <div style={{ display: 'flex', gap: 4, background: '#141414',
-                border: `0.5px solid ${token.border}`, borderRadius: 8, padding: 3 }}>
+              <div className="admin-range-selector" style={{ display: 'flex', gap: 4, background: '#141414',
+                border: `0.5px solid ${token.border}`, borderRadius: 8, padding: 3, maxWidth: '100%' }}>
                 {RANGE_OPTIONS.map(opt => (
                   <button
                     key={opt.key}
@@ -277,6 +302,7 @@ const controls = [
                       fontSize: 13,
                       fontWeight: 500,
                       cursor: 'pointer',
+                      whiteSpace: 'nowrap',
                       background: range === opt.key ? token.orange : 'transparent',
                       color: range === opt.key ? '#fff' : token.muted,
                       transition: 'background 0.15s, color 0.15s',
@@ -370,7 +396,7 @@ const controls = [
           </div>
 
           {/* ── doughnut + horizontal bar ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr',
+          <div className="admin-charts-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr',
             gap: 10, marginBottom: 10 }}>
 
             {/* orders by status */}

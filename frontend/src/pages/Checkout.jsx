@@ -220,7 +220,7 @@ const Checkout = () => {
   const s = {
     page:             { minHeight: '100vh', background: '#0a0a0a', padding: '40px 20px', fontFamily: "'DM Sans', system-ui, sans-serif", color: '#f1f1f1' },
     inner:            { maxWidth: 960, margin: '0 auto' },
-    breadcrumb:       { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#555', marginBottom: 32 },
+    breadcrumb:       { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#555', marginBottom: 32, flexWrap: 'wrap' },
     breadcrumbActive: { color: '#f97316' },
     heading:          { fontSize: 24, fontWeight: 600, letterSpacing: '-0.5px', marginBottom: 28, color: '#f1f1f1' },
     grid:             { display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20, alignItems: 'start' },
@@ -269,7 +269,44 @@ const Checkout = () => {
   }
 
   return (
-    <div style={s.page}>
+    <div style={s.page} className="checkout-page">
+      {/* ✅ FIX: this page was built entirely with inline JS style
+          objects, which can't respond to media queries on their own —
+          so the fixed 1fr/380px two-column grid, the sticky summary
+          card, and full desktop padding applied unconditionally at
+          every screen width, including phones. This scoped stylesheet
+          layers responsive behavior on top via classNames without
+          having to rewrite every inline style. */}
+      <style>{`
+        @media (max-width: 900px) {
+          .checkout-page { padding: 24px 14px !important; }
+          .checkout-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .checkout-summary-card {
+            position: static !important;
+            top: auto !important;
+          }
+          .checkout-form-card,
+          .checkout-summary-card {
+            padding: 18px !important;
+          }
+          .checkout-heading {
+            font-size: 20px !important;
+            margin-bottom: 20px !important;
+          }
+        }
+        @media (max-width: 420px) {
+          .checkout-row2 {
+            grid-template-columns: 1fr !important;
+          }
+          .checkout-form-card,
+          .checkout-summary-card {
+            padding: 14px !important;
+          }
+        }
+      `}</style>
+
       <div style={s.inner}>
 
         <div style={s.breadcrumb}>
@@ -278,18 +315,18 @@ const Checkout = () => {
           <span>›</span><span>Confirmation</span>
         </div>
 
-        <h2 style={s.heading}>Checkout</h2>
+        <h2 style={s.heading} className="checkout-heading">Checkout</h2>
 
         <form onSubmit={handleSubmit}>
-          <div style={s.grid}>
+          <div style={s.grid} className="checkout-grid">
 
             {/* ── Left: shipping + payment method ── */}
-            <div style={s.formCard}>
+            <div style={s.formCard} className="checkout-form-card">
               <div style={s.sectionLabel}>Shipping details</div>
 
               <Field label="Full name"      field="fullName"   placeholder="Enter your name"     address={address} onChange={handleChange} />
               <Field label="Street address" field="street"     placeholder="Enter street address" address={address} onChange={handleChange} />
-              <div style={s.row2}>
+              <div style={s.row2} className="checkout-row2">
                 <Field label="City"        field="city"       placeholder="Enter your city"      address={address} onChange={handleChange} />
                 <Field label="Postal code" field="postalCode" placeholder="400001"               address={address} onChange={handleChange} />
               </div>
@@ -345,7 +382,7 @@ const Checkout = () => {
             </div>
 
             {/* ── Right: order summary ── */}
-            <div style={s.summaryCard}>
+            <div style={s.summaryCard} className="checkout-summary-card">
               <div style={s.sectionLabel}>Order summary</div>
 
               {checkoutItems.length === 0 ? (
